@@ -17,7 +17,6 @@
     --miniline-color: #666;
     --miniline-expanded-color: #0078d4;
   }
-  /* Reset base styles */
   body, html {
     margin: 0; padding: 0; height: 100%;
     background-color: var(--bg-color);
@@ -27,6 +26,7 @@
     -moz-osx-font-smoothing: grayscale;
     user-select: none;
     overflow-x: hidden;
+    overflow-y: visible;
   }
   /* Fullscreen big loader overlay */
   #bigLoaderOverlay {
@@ -36,34 +36,46 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 9999;
-    transition: opacity 0.6s ease;
+    z-index: 10000;
+    will-change: transform, opacity;
+    pointer-events: auto;
+    transition: transform 1.2s ease, opacity 0.6s ease 1.2s;
+    overflow: visible;
   }
-  #bigLoaderOverlay.hidden {
-    opacity: 0;
-    pointer-events: none;
-  }
-
   /* Big circular spinner */
   .big-spinner {
     width: 80px;
     height: 80px;
     animation: spin 1.5s linear infinite;
+    stroke-dasharray: 150;
+    stroke-dashoffset: 50;
+    transform-origin: 50% 50%;
   }
   .big-spinner circle {
     stroke: var(--white);
     stroke-width: 6;
     fill: none;
     stroke-linecap: round;
-    stroke-dasharray: 150;
-    stroke-dashoffset: 50;
-    transform-origin: 50% 50%;
+    animation: spin 1.5s linear infinite;
   }
   @keyframes spin {
     0% {transform: rotate(0deg);}
     100% {transform: rotate(360deg);}
   }
-
+  /* M path shape container for morph animation */
+  #mShape {
+    position: fixed;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    fill: none;
+    stroke: white;
+    stroke-width: 2.5;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    opacity: 0;
+    z-index: 11000;
+  }
   /* Mini horizontal line container fixed on top */
   .mini-line-container {
     position: fixed;
@@ -74,7 +86,7 @@
     height: 4px;
     cursor: pointer;
     user-select: none;
-    z-index: 20;
+    z-index: 15000;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -85,6 +97,7 @@
     background-color: var(--miniline-color);
     border-radius: 1px;
     transition: width 0.3s ease, background-color 0.3s ease;
+    transform-origin: center center;
   }
   .mini-line.expanded {
     width: 120px;
@@ -93,7 +106,6 @@
   .mini-line.pull-active {
     transition: none;
   }
-
   /* Top bar container */
   .top-bar {
     position: relative;
@@ -109,13 +121,14 @@
     touch-action: pan-y;
     overflow: visible;
     opacity: 0;
-    transition: opacity 0.6s ease;
-    z-index: 10;
+    pointer-events: none;
+    z-index: 14000;
+    transition: opacity 0.4s ease;
   }
   .top-bar.visible {
     opacity: 1;
+    pointer-events: auto;
   }
-
   /* Container that moves down on pull */
   .top-bar-content {
     display: flex;
@@ -126,7 +139,7 @@
     will-change: transform;
     pointer-events: auto;
   }
-  /* MS Logo container with subtle rectangular border */
+  /* MS Logo container */
   .ms-logo-box {
     display: flex;
     align-items: center;
@@ -139,6 +152,8 @@
     cursor: default;
     background: transparent;
     flex-shrink: 0;
+    position: relative;
+    overflow: visible;
   }
   .ms-logo svg {
     width: 28px;
@@ -148,7 +163,7 @@
     fill: none;
     stroke-linejoin: round;
   }
-  /* Page name placed inside search box area */
+  /* Page name inside the search bar */
   .page-name-in-search {
     font-weight: 300;
     font-size: 1.1rem;
@@ -160,8 +175,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
-
-  /* Loading/Search box container */
+  /* Loading box container */
   .loading-box {
     position: relative;
     width: 260px;
@@ -174,8 +188,7 @@
     box-sizing: border-box;
     flex-shrink: 0;
   }
-
-  /* Vertical line spinner container */
+  /* Vertical spinner container */
   .spinner-vertical {
     position: relative;
     width: 24px;
@@ -195,54 +208,24 @@
     transform-origin: center center;
   }
   @keyframes vertical-spin {
-    0% {
-      transform: rotate(0deg);
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.3;
-    }
-    100% {
-      transform: rotate(360deg);
-      opacity: 1;
-    }
-  }
-
-  /* Search bar input style - hidden as replaced by page name for now */
-  .search-bar {
-    width: 100%;
-  }
-  .search-bar input {
-    width: 100%;
-    height: 40px;
-    border-radius: 8px;
-    border: none;
-    background: var(--input-bg);
-    color: var(--input-text);
-    font-size: 1rem;
-    padding: 0 14px;
-    box-sizing: border-box;
-    outline: none;
-    caret-color: var(--primary);
-    transition: background-color 0.3s ease;
-    font-weight: 400;
-  }
-  .search-bar input::placeholder {
-    color: #bbb;
-  }
-  .search-bar input:focus {
-    background-color: #4a4a4a;
+    0% { transform: rotate(0deg); opacity: 1; }
+    50% { opacity: 0.3; }
+    100% { transform: rotate(360deg); opacity: 1; }
   }
 </style>
 </head>
 <body>
-
-<!-- Fullscreen big spinner overlay -->
+<!-- Big circular loader -->
 <div id="bigLoaderOverlay" role="status" aria-live="polite" aria-label="Loading page">
-  <svg class="big-spinner" viewBox="0 0 50 50" aria-hidden="true" focusable="false">
-    <circle cx="25" cy="25" r="20"></circle>
+  <svg id="bigSpinner" class="big-spinner" viewBox="0 0 50 50" aria-hidden="true" focusable="false">
+    <circle cx="25" cy="25" r="20" />
   </svg>
 </div>
+
+<!-- SVG path for M Shape morph animation -->
+<svg id="mShape" width="48" height="40" viewBox="0 0 24 24" style="position: fixed; top: 8px; left: 16px; pointer-events: none; transform-origin: left top;">
+  <polyline id="mPath" points="3,19 3,5 9.5,14 13.5,5 20,19" stroke="white" stroke-width="2.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>
 
 <!-- Mini horizontal line container fixed on top -->
 <div class="mini-line-container" id="miniLineContainer" role="button" tabindex="0" aria-pressed="false" aria-label="Expand or collapse">
@@ -260,7 +243,7 @@
     </div>
     <div class="loading-box" id="loadingBox" aria-live="polite" aria-busy="true" aria-label="Loading interface">
       <div class="page-name-in-search" id="pageNameInSearch" style="display:none;">My Page Name</div>
-      <div class="spinner-vertical" id="spinnerVertical" aria-hidden="true">
+      <div class="spinner-vertical" id="spinnerVertical" aria-hidden="true" style="display:none">
         <div class="spinner-line"></div>
       </div>
     </div>
@@ -268,29 +251,85 @@
 </header>
 
 <script>
-  // Initial references
   const bigLoader = document.getElementById('bigLoaderOverlay');
+  const bigSpinner = document.getElementById('bigSpinner');
   const topBar = document.getElementById('topBar');
   const pageNameInSearch = document.getElementById('pageNameInSearch');
   const spinnerVertical = document.getElementById('spinnerVertical');
-  let miniLine = document.getElementById('miniLine');
+  const miniLine = document.getElementById('miniLine');
   const miniLineContainer = document.getElementById('miniLineContainer');
+  const topBarContent = document.getElementById('topBarContent');
+  const mShape = document.getElementById('mShape');
 
-  // Show big spinner initially, hide top bar
-  topBar.style.opacity = '0';
-  topBar.setAttribute('aria-hidden', 'true');
-  bigLoader.style.opacity = '1';
+  // Calculate translation from center of screen to logo position
+  function getTranslateToLogo() {
+    const logoBox = document.querySelector('.ms-logo-box');
+    const logoRect = logoBox.getBoundingClientRect();
+    const loaderRect = bigLoader.getBoundingClientRect();
 
-  // After 3 seconds, fade out big spinner and fade in top bar with spinner & page name in search box
-  setTimeout(() => {
-    bigLoader.classList.add('hidden');
-    topBar.setAttribute('aria-hidden', 'false');
-    // Show page name and spinner
-    pageNameInSearch.style.display = 'block';
-    spinnerVertical.style.display = 'block';
+    const dx = logoRect.left + logoRect.width / 2 - (loaderRect.left + loaderRect.width / 2);
+    const dy = logoRect.top + logoRect.height / 2 - (loaderRect.top + loaderRect.height / 2);
+    return {dx, dy};
+  }
 
-    // Fade in top bar
+  async function animateBigLoaderToLogoAndMorph() {
+    const {dx, dy} = getTranslateToLogo();
+
+    // Stop big spinner rotation to keep stable before morph.
+    bigSpinner.style.animationPlayState = 'paused';
+
+    // Animate big loader circle stroke dashoffset shrink to simulate folding
+    bigSpinner.querySelector('circle').style.transition = 'stroke-dashoffset 0.8s ease-out';
+    bigSpinner.querySelector('circle').style.strokeDashoffset = '0';
+
+    // Wait for dash shrink animation
+    await new Promise(r => setTimeout(r, 800));
+
+    // Animate move and scaling toward logo position
+    bigLoader.style.transition = 'transform 1s ease';
+    bigLoader.style.transformOrigin = 'center center';
+    bigLoader.style.transform = `translate(${dx}px, ${dy}px) scale(0.4)`;
+
+    // Show and prepare M shape path at logo position, start invisible
+    mShape.style.opacity = '0';
+    mShape.style.transition = 'opacity 0.8s ease 0.8s';
+    mShape.style.transform = 'scale(0.4) translate(0,0)';
+    mShape.style.display = 'block';
+
+    // After small delay, fade the M shape in
+    setTimeout(() => {
+      mShape.style.opacity = '1';
+    }, 800);
+
+    // Fade out the big loader overlay after morph
+    bigLoader.style.transition += ', opacity 0.8s ease 0.8s';
+    bigLoader.style.opacity = '0';
+
+    // Wait total animation duration before showing top bar
+    await new Promise(r => setTimeout(r, 1600));
+
+    bigLoader.style.display = 'none';
+    bigLoader.style.pointerEvents = 'none';
+
+    // Hide big spinner dashoffset transition so it resets on reload
+    bigSpinner.querySelector('circle').style.transition = '';
+
+    // Show top bar with spinner and page name
     topBar.classList.add('visible');
+    topBar.style.pointerEvents = 'auto';
+    topBar.style.opacity = '1';
+    spinnerVertical.style.display = 'block';
+    pageNameInSearch.style.display = 'block';
+
+    // Hide M shape after morph transition complete
+    setTimeout(() => {
+      mShape.style.opacity = '0';
+      setTimeout(() => { mShape.style.display = 'none'; }, 600);
+    }, 1200);
+  }
+
+  setTimeout(() => {
+    animateBigLoaderToLogoAndMorph();
   }, 3000);
 
   // Mini line expand/collapse toggle
@@ -305,7 +344,6 @@
       miniLineContainer.setAttribute('aria-pressed', 'false');
     }
   }
-
   miniLineContainer.addEventListener('click', toggleExpand);
   miniLineContainer.addEventListener('keydown', e => {
     if(e.key === 'Enter' || e.key === ' ') {
@@ -314,11 +352,10 @@
     }
   });
 
-  // Pull down animation handling for top bar content and mini line
-  const topBarContent = document.getElementById('topBarContent');
+  // Pull down animation
   let startY = null;
   let pulling = false;
-  let maxPull = 100;
+  const maxPull = 100;
 
   function easeOutBack(t) {
     const c1 = 1.70158;
@@ -358,7 +395,7 @@
     }, 400);
   }
 
-  // For mouse desktop support
+  // Mouse support for pull-down
   let mouseDown = false;
   function onMouseDown(evt) {
     startY = evt.clientY;
@@ -392,16 +429,15 @@
     }, 400);
   }
 
-  const topBar = document.getElementById('topBar');
-  topBar.addEventListener('touchstart', onTouchStart, {passive: true});
-  topBar.addEventListener('touchmove', onTouchMove, {passive: true});
-  topBar.addEventListener('touchend', onTouchEnd);
-  topBar.addEventListener('touchcancel', onTouchEnd);
+  const topBarEl = document.getElementById('topBar');
+  topBarEl.addEventListener('touchstart', onTouchStart, {passive: true});
+  topBarEl.addEventListener('touchmove', onTouchMove, {passive: true});
+  topBarEl.addEventListener('touchend', onTouchEnd);
+  topBarEl.addEventListener('touchcancel', onTouchEnd);
 
-  topBar.addEventListener('mousedown', onMouseDown);
+  topBarEl.addEventListener('mousedown', onMouseDown);
   window.addEventListener('mousemove', onMouseMove);
   window.addEventListener('mouseup', onMouseUp);
-
 </script>
 </body>
 </html>
