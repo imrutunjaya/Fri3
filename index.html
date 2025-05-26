@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MS Search Interface</title>
+<style>
+  :root {
+    --bg-color: #000000; /* pitch black background */
+    --topbar-bg: #000000; /* pitch black topbar */
+    --white: #ffffff;
+    --primary: #0078d4;
+    --input-bg: #121212;
+    --input-border: #1c1c1c;
+    --input-text: #f0f0f0;
+    --shadow-color: rgba(0,0,0,0.9);
+    --miniline-color: #666;
+    --miniline-expanded-color: #0078d4;
+  }
+  /* Reset base styles */
+  body, html {
+    margin: 0; padding: 0; height: 100%;
+    background-color: var(--bg-color);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--white);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    user-select: none;
+    overflow-x: hidden;
+  }
+  /* Fullscreen big loader overlay */
+  #bigLoaderOverlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg-color);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    transition: opacity 0.6s ease;
+  }
+  #bigLoaderOverlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* Big circular spinner */
+  .big-spinner {
+    width: 80px;
+    height: 80px;
+    animation: spin 1.5s linear infinite;
+  }
+  .big-spinner circle {
+    stroke: var(--white);
+    stroke-width: 6;
+    fill: none;
+    stroke-linecap: round;
+    stroke-dasharray: 150;
+    stroke-dashoffset: 50;
+    transform-origin: 50% 50%;
+  }
+  @keyframes spin {
+    0% {transform: rotate(0deg);}
+    100% {transform: rotate(360deg);}
+  }
+
+  /* Mini horizontal line container fixed on top */
+  .mini-line-container {
+    position: fixed;
+    top: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 36px;
+    height: 4px;
+    cursor: pointer;
+    user-select: none;
+    z-index: 20;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .mini-line {
+    width: 30px;
+    height: 2px;
+    background-color: var(--miniline-color);
+    border-radius: 1px;
+    transition: width 0.3s ease, background-color 0.3s ease;
+  }
+  .mini-line.expanded {
+    width: 120px;
+    background-color: var(--miniline-expanded-color);
+  }
+  .mini-line.pull-active {
+    transition: none;
+  }
+
+  /* Top bar container */
+  .top-bar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 56px;
+    padding: 0 16px;
+    background: var(--topbar-bg);
+    box-shadow: 0 2px 6px var(--shadow-color);
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+    user-select: none;
+    touch-action: pan-y;
+    overflow: visible;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    z-index: 10;
+  }
+  .top-bar.visible {
+    opacity: 1;
+  }
+
+  /* Container that moves down on pull */
+  .top-bar-content {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    transform: translateY(0);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+    pointer-events: auto;
+  }
+  /* MS Logo container with subtle rectangular border */
+  .ms-logo-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 40px;
+    border-radius: 4px;
+    border: 1.5px solid white;
+    margin-right: 16px;
+    cursor: default;
+    background: transparent;
+    flex-shrink: 0;
+  }
+  .ms-logo svg {
+    width: 28px;
+    height: 28px;
+    stroke: white;
+    stroke-width: 2.5;
+    fill: none;
+    stroke-linejoin: round;
+  }
+  /* Page name placed inside search box area */
+  .page-name-in-search {
+    font-weight: 300;
+    font-size: 1.1rem;
+    letter-spacing: 0.07em;
+    color: var(--white);
+    user-select: none;
+    padding-left: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Loading/Search box container */
+  .loading-box {
+    position: relative;
+    width: 260px;
+    height: 40px;
+    border-radius: 8px;
+    background: var(--input-bg);
+    border: 1.8px solid var(--input-border);
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+    flex-shrink: 0;
+  }
+
+  /* Vertical line spinner container */
+  .spinner-vertical {
+    position: relative;
+    width: 24px;
+    height: 24px;
+    margin-left: 14px;
+  }
+  .spinner-line {
+    position: absolute;
+    left: 50%;
+    top: 10%;
+    width: 3.5px;
+    height: 80%;
+    margin-left: -1.75px;
+    border-radius: 1.75px;
+    background: var(--white);
+    animation: vertical-spin 1.2s linear infinite;
+    transform-origin: center center;
+  }
+  @keyframes vertical-spin {
+    0% {
+      transform: rotate(0deg);
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.3;
+    }
+    100% {
+      transform: rotate(360deg);
+      opacity: 1;
+    }
+  }
+
+  /* Search bar input style - hidden as replaced by page name for now */
+  .search-bar {
+    width: 100%;
+  }
+  .search-bar input {
+    width: 100%;
+    height: 40px;
+    border-radius: 8px;
+    border: none;
+    background: var(--input-bg);
+    color: var(--input-text);
+    font-size: 1rem;
+    padding: 0 14px;
+    box-sizing: border-box;
+    outline: none;
+    caret-color: var(--primary);
+    transition: background-color 0.3s ease;
+    font-weight: 400;
+  }
+  .search-bar input::placeholder {
+    color: #bbb;
+  }
+  .search-bar input:focus {
+    background-color: #4a4a4a;
+  }
+</style>
+</head>
+<body>
+
+<!-- Fullscreen big spinner overlay -->
+<div id="bigLoaderOverlay" role="status" aria-live="polite" aria-label="Loading page">
+  <svg class="big-spinner" viewBox="0 0 50 50" aria-hidden="true" focusable="false">
+    <circle cx="25" cy="25" r="20"></circle>
+  </svg>
+</div>
+
+<!-- Mini horizontal line container fixed on top -->
+<div class="mini-line-container" id="miniLineContainer" role="button" tabindex="0" aria-pressed="false" aria-label="Expand or collapse">
+  <div class="mini-line" id="miniLine"></div>
+</div>
+
+<header class="top-bar" role="banner" id="topBar" aria-hidden="true">
+  <div class="top-bar-content" id="topBarContent">
+    <div class="ms-logo-box" aria-label="MS logo" role="img">
+      <div class="ms-logo">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" >
+          <polyline points="3,19 3,5 9.5,14 13.5,5 20,19" />
+        </svg>
+      </div>
+    </div>
+    <div class="loading-box" id="loadingBox" aria-live="polite" aria-busy="true" aria-label="Loading interface">
+      <div class="page-name-in-search" id="pageNameInSearch" style="display:none;">My Page Name</div>
+      <div class="spinner-vertical" id="spinnerVertical" aria-hidden="true">
+        <div class="spinner-line"></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<script>
+  // Initial references
+  const bigLoader = document.getElementById('bigLoaderOverlay');
+  const topBar = document.getElementById('topBar');
+  const pageNameInSearch = document.getElementById('pageNameInSearch');
+  const spinnerVertical = document.getElementById('spinnerVertical');
+  let miniLine = document.getElementById('miniLine');
+  const miniLineContainer = document.getElementById('miniLineContainer');
+
+  // Show big spinner initially, hide top bar
+  topBar.style.opacity = '0';
+  topBar.setAttribute('aria-hidden', 'true');
+  bigLoader.style.opacity = '1';
+
+  // After 3 seconds, fade out big spinner and fade in top bar with spinner & page name in search box
+  setTimeout(() => {
+    bigLoader.classList.add('hidden');
+    topBar.setAttribute('aria-hidden', 'false');
+    // Show page name and spinner
+    pageNameInSearch.style.display = 'block';
+    spinnerVertical.style.display = 'block';
+
+    // Fade in top bar
+    topBar.classList.add('visible');
+  }, 3000);
+
+  // Mini line expand/collapse toggle
+  let expanded = false;
+  function toggleExpand() {
+    expanded = !expanded;
+    if (expanded) {
+      miniLine.classList.add('expanded');
+      miniLineContainer.setAttribute('aria-pressed', 'true');
+    } else {
+      miniLine.classList.remove('expanded');
+      miniLineContainer.setAttribute('aria-pressed', 'false');
+    }
+  }
+
+  miniLineContainer.addEventListener('click', toggleExpand);
+  miniLineContainer.addEventListener('keydown', e => {
+    if(e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggleExpand();
+    }
+  });
+
+  // Pull down animation handling for top bar content and mini line
+  const topBarContent = document.getElementById('topBarContent');
+  let startY = null;
+  let pulling = false;
+  let maxPull = 100;
+
+  function easeOutBack(t) {
+    const c1 = 1.70158;
+    const c3 = c1 + 1;
+    return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+  }
+
+  function onTouchStart(evt) {
+    if (evt.touches && evt.touches.length === 1) {
+      startY = evt.touches[0].clientY;
+      pulling = true;
+      miniLine.classList.add('pull-active');
+      topBarContent.style.transition = 'none';
+    }
+  }
+  function onTouchMove(evt) {
+    if (!pulling) return;
+    let currentY = evt.touches[0].clientY;
+    let deltaY = currentY - startY;
+    if(deltaY < 0) deltaY = 0;
+    if(deltaY > maxPull) deltaY = maxPull;
+    let eased = easeOutBack(deltaY / maxPull) * maxPull;
+    topBarContent.style.transform = `translateY(${eased}px)`;
+    miniLine.style.transform = `scaleX(${1 + eased / maxPull * 3})`;
+  }
+  function onTouchEnd() {
+    if (!pulling) return;
+    pulling = false;
+    miniLine.classList.remove('pull-active');
+    topBarContent.style.transition = 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+    miniLine.style.transition = 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+    topBarContent.style.transform = 'translateY(0)';
+    miniLine.style.transform = 'scaleX(1)';
+    setTimeout(() => {
+      miniLine.style.transition = '';
+      topBarContent.style.transition = '';
+    }, 400);
+  }
+
+  // For mouse desktop support
+  let mouseDown = false;
+  function onMouseDown(evt) {
+    startY = evt.clientY;
+    pulling = true;
+    mouseDown = true;
+    miniLine.classList.add('pull-active');
+    topBarContent.style.transition = 'none';
+  }
+  function onMouseMove(evt) {
+    if (!mouseDown) return;
+    let currentY = evt.clientY;
+    let deltaY = currentY - startY;
+    if(deltaY < 0) deltaY = 0;
+    if(deltaY > maxPull) deltaY = maxPull;
+    let eased = easeOutBack(deltaY / maxPull) * maxPull;
+    topBarContent.style.transform = `translateY(${eased}px)`;
+    miniLine.style.transform = `scaleX(${1 + eased / maxPull * 3})`;
+  }
+  function onMouseUp() {
+    if (!mouseDown) return;
+    mouseDown = false;
+    pulling = false;
+    miniLine.classList.remove('pull-active');
+    topBarContent.style.transition = 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+    miniLine.style.transition = 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+    topBarContent.style.transform = 'translateY(0)';
+    miniLine.style.transform = 'scaleX(1)';
+    setTimeout(() => {
+      miniLine.style.transition = '';
+      topBarContent.style.transition = '';
+    }, 400);
+  }
+
+  const topBar = document.getElementById('topBar');
+  topBar.addEventListener('touchstart', onTouchStart, {passive: true});
+  topBar.addEventListener('touchmove', onTouchMove, {passive: true});
+  topBar.addEventListener('touchend', onTouchEnd);
+  topBar.addEventListener('touchcancel', onTouchEnd);
+
+  topBar.addEventListener('mousedown', onMouseDown);
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mouseup', onMouseUp);
+
+</script>
+</body>
+</html>
