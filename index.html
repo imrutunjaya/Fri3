@@ -214,6 +214,46 @@
     100% { transform: rotate(360deg); opacity: 1; }
   }
 
+#mainContent {
+  margin-top: 150px;
+  padding: 20px;
+  background-color: var(--main-content-bg);
+  color: var(--white);
+}
+
+.content-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.content-list li {
+  background: #1c1c1c;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  transition: transform 0.2s ease;
+}
+
+.content-list li:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+
+.content-list h3 {
+  margin: 0 0 8px;
+  font-size: 1.2rem;
+  color: var(--white);
+}
+
+.content-list p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #ccc;
+}
+
+  
   /* Menu container hidden by default below mini-line */
   #menuContainer {
     position: fixed;
@@ -291,6 +331,23 @@
     </div>
   </header>
 
+<main id="mainContent">
+  <ul class="content-list">
+    <li>
+      <h3>Title One</h3>
+      <p>Description for content one.</p>
+    </li>
+    <li>
+      <h3>Title Two</h3>
+      <p>Description for content two.</p>
+    </li>
+    <li>
+      <h3>Title Three</h3>
+      <p>Description for content three.</p>
+    </li>
+  </ul>
+</main>
+  
   <!-- Menu container -->
   <div id="menuContainer" aria-label="Main menu">
     <div class="menu-item" tabindex="0" title="Home">
