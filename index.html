@@ -39,6 +39,7 @@
     z-index: 10000;
     will-change: transform, opacity;
     pointer-events: auto;
+    transition: none;
   }
   /* Big circular spinner */
   .big-spinner {
@@ -59,36 +60,45 @@
     0% {transform: rotate(0deg);}
     100% {transform: rotate(360deg);}
   }
-  /* Mini horizontal line container fixed on top */
+  /* Mini horizontal line container permanently below top bar */
   .mini-line-container {
     position: fixed;
-    top: 6px;
+    top: 62px; /* just below the 56px top bar */
     left: 50%;
     transform: translateX(-50%);
     width: 36px;
     height: 4px;
     cursor: pointer;
     user-select: none;
-    z-index: 15000;
+    z-index: 16000;
     display: flex;
     justify-content: center;
     align-items: center;
+    transition: width 0.3s ease;
+    border-radius: 2px;
   }
   .mini-line {
     width: 30px;
     height: 2px;
     background-color: var(--miniline-color);
     border-radius: 1px;
-    transition: width 0.3s ease, background-color 0.3s ease;
+    transition: width 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease;
     transform-origin: center center;
   }
-  .mini-line.expanded {
+  .mini-line-container.expanded {
     width: 120px;
     background-color: var(--miniline-expanded-color);
+    box-shadow: 0 0 8px var(--primary);
+  }
+  .mini-line-container.expanded .mini-line {
+    width: 100%;
+    background-color: var(--white);
+    box-shadow: none;
   }
   .mini-line.pull-active {
     transition: none;
   }
+
   /* Top bar container */
   .top-bar {
     position: relative;
@@ -136,6 +146,7 @@
     background: transparent;
     flex-shrink: 0;
     position: relative;
+    z-index: 1;
   }
   .ms-logo svg {
     width: 28px;
@@ -176,6 +187,14 @@
     width: 24px;
     height: 24px;
     margin-left: 14px;
+    overflow: visible;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .spinner-vertical.visible {
+    opacity: 1;
+    pointer-events: auto;
   }
   .spinner-line {
     position: absolute;
@@ -187,69 +206,110 @@
     border-radius: 1.75px;
     background: var(--white);
     animation: vertical-spin 1.2s linear infinite;
-    transform-origin: center center;
+    transform-origin: center;
   }
   @keyframes vertical-spin {
     0% { transform: rotate(0deg); opacity: 1; }
     50% { opacity: 0.3; }
     100% { transform: rotate(360deg); opacity: 1; }
   }
-  /* Path morph animations for smooth M shape */
-  #mMorphPath {
-    stroke: white;
-    stroke-width: 2.5;
-    fill: none;
-    stroke-linejoin: round;
-    stroke-linecap: round;
+
+  /* Menu container hidden by default below mini-line */
+  #menuContainer {
     position: fixed;
-    top: 8px; 
-    left: 16px;
-    width: 40px;
-    height: 36px;
-    pointer-events: none;
-    z-index: 11000;
+    top: 92px; /* 62px + 30px roughly below mini line */
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    background: #121212;
+    border-radius: 8px;
+    box-shadow: 0 0 12px rgba(0,0,0,0.8);
+    padding: 12px 20px;
+    display: flex;
+    gap: 32px;
     opacity: 0;
-    transition: opacity 0.3s ease;
-    stroke-dasharray: 120;
-    stroke-dashoffset: 120;
+    pointer-events: none;
+    transition: opacity 0.35s ease, transform 0.35s ease;
+    z-index: 16000;
+  }
+  #menuContainer.visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+  }
+  /* Menu item styles */
+  .menu-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    color: var(--white);
+    font-size: 0.85rem;
+    transition: color 0.3s ease;
+  }
+  .menu-item svg {
+    width: 24px;
+    height: 24px;
+    fill: none;
+    stroke: var(--white);
+    stroke-width: 2;
+    margin-bottom: 6px;
+  }
+  .menu-item:hover {
+    color: var(--primary);
   }
 </style>
 </head>
 <body>
-<!-- Big circular loader -->
-<div id="bigLoaderOverlay" role="status" aria-live="polite" aria-label="Loading page">
-  <svg id="bigSpinner" class="big-spinner" viewBox="0 0 50 50" aria-hidden="true" focusable="false">
-    <circle cx="25" cy="25" r="20" />
-  </svg>
-</div>
+  <!-- Big circular loader -->
+  <div id="bigLoaderOverlay" role="status" aria-live="polite" aria-label="Loading page">
+    <svg id="bigSpinner" class="big-spinner" viewBox="0 0 50 50" aria-hidden="true" focusable="false">
+      <circle cx="25" cy="25" r="20" />
+    </svg>
+  </div>
 
-<!-- SVG path for morphing M shape -->
-<svg id="mMorphSVG" width="40" height="36" style="position: fixed; top: 8px; left: 16px; overflow: visible; pointer-events: none; z-index: 11000; opacity: 0;">
-  <path id="mMorphPath" d="M3 30 L3 5 L10 18 L17 5 L23 30" />
-</svg>
+  <!-- Mini horizontal line container permanently below top bar -->
+  <div class="mini-line-container" id="miniLineContainer" role="button" tabindex="0" aria-pressed="false" aria-label="Expand or collapse">
+    <div class="mini-line" id="miniLine"></div>
+  </div>
 
-<!-- Mini horizontal line container fixed on top -->
-<div class="mini-line-container" id="miniLineContainer" role="button" tabindex="0" aria-pressed="false" aria-label="Expand or collapse">
-  <div class="mini-line" id="miniLine"></div>
-</div>
-
-<header class="top-bar" role="banner" id="topBar" aria-hidden="true">
-  <div class="top-bar-content" id="topBarContent">
-    <div class="ms-logo-box" aria-label="MS logo" role="img">
-      <div class="ms-logo">
-        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" >
-          <polyline points="3,19 3,5 9.5,14 13.5,5 20,19" />
-        </svg>
+  <!-- Top bar -->
+  <header class="top-bar" role="banner" id="topBar" aria-hidden="true">
+    <div class="top-bar-content" id="topBarContent">
+      <div class="ms-logo-box" aria-label="MS logo" role="img">
+        <div class="ms-logo">
+          <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" >
+            <polyline points="3,19 3,5 9.5,14 13.5,5 20,19" />
+          </svg>
+        </div>
+      </div>
+      <div class="loading-box" id="loadingBox" aria-live="polite" aria-busy="true" aria-label="Loading interface">
+        <div class="page-name-in-search" id="pageNameInSearch" style="display:none;">Actual Site Name</div>
+        <div class="spinner-vertical" id="spinnerVertical" aria-hidden="true">
+          <div class="spinner-line"></div>
+        </div>
       </div>
     </div>
-    <div class="loading-box" id="loadingBox" aria-live="polite" aria-busy="true" aria-label="Loading interface">
-      <div class="page-name-in-search" id="pageNameInSearch" style="display:none;">My Page Name</div>
-      <div class="spinner-vertical" id="spinnerVertical" aria-hidden="true" style="display:none">
-        <div class="spinner-line"></div>
-      </div>
+  </header>
+
+  <!-- Menu container -->
+  <div id="menuContainer" aria-label="Main menu">
+    <div class="menu-item" tabindex="0" title="Home">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 12 L12 3 L21 12 M5 21 L19 21 L19 12"/></svg>
+      Home
+    </div>
+    <div class="menu-item" tabindex="0" title="Search">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      Search
+    </div>
+    <div class="menu-item" tabindex="0" title="Settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3-1.8l-1.6-2.7a1.7 1.7 0 0 0-1.1-.8l-3.1-.9a1.7 1.7 0 0 0-1.8.6l-1.5 1.9a3 3 0 0 1-3.9 1.4l-1.7-.9"/></svg>
+      Settings
+    </div>
+    <div class="menu-item" tabindex="0" title="Profile">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="7" r="4"/><path d="M5.5 21c0-3.3 5-5 6.5-5s6.5 1.7 6.5 5"/></svg>
+      Profile
     </div>
   </div>
-</header>
 
 <script>
   const bigLoader = document.getElementById('bigLoaderOverlay');
@@ -257,87 +317,62 @@
   const topBar = document.getElementById('topBar');
   const pageNameInSearch = document.getElementById('pageNameInSearch');
   const spinnerVertical = document.getElementById('spinnerVertical');
-  const miniLine = document.getElementById('miniLine');
   const miniLineContainer = document.getElementById('miniLineContainer');
+  const miniLine = document.getElementById('miniLine');
   const topBarContent = document.getElementById('topBarContent');
-  const mMorphSVG = document.getElementById('mMorphSVG');
-  const mMorphPath = document.getElementById('mMorphPath');
+  const menuContainer = document.getElementById('menuContainer');
 
   function getTranslateToLogo() {
     const logoBox = document.querySelector('.ms-logo-box');
     const logoRect = logoBox.getBoundingClientRect();
     const loaderRect = bigLoader.getBoundingClientRect();
-
     const dx = logoRect.left + logoRect.width / 2 - (loaderRect.left + loaderRect.width / 2);
     const dy = logoRect.top + logoRect.height / 2 - (loaderRect.top + loaderRect.height / 2);
     return {dx, dy};
   }
 
-  async function animateLoaderToLogoAndMorph() {
-    const {dx, dy} = getTranslateToLogo();
-
-    // Stop big spinner rotation before morph
+  async function animateLoader() {
+    // Close the big circular stroke dashoffset
     bigSpinnerCircle.style.transition = 'stroke-dashoffset 0.7s ease';
-    bigSpinnerCircle.style.strokeDashoffset = '0';  // Close circle
-
+    bigSpinnerCircle.style.strokeDashoffset = '0';
     await new Promise(r => setTimeout(r, 700));
 
-    // Move and scale big loader towards logo
-    bigLoader.style.transition = 'transform 1s ease';
+    // Move and scale big loader to logo position
+    const {dx, dy} = getTranslateToLogo();
+    bigLoader.style.transition = 'transform 1s ease, opacity 0.1s ease 1s';
     bigLoader.style.transformOrigin = 'center center';
-    bigLoader.style.transform = `translate(${dx}px, ${dy}px) scale(0.25)`;
-    
-    // Show M morph path, fade in and animate stroke dashoffset
-    mMorphSVG.style.opacity = '1';
-    mMorphPath.style.transition = 'none';
-    mMorphPath.style.strokeDasharray = '120';
-    mMorphPath.style.strokeDashoffset = '120';
-    
-    // Animate dashoffset to 0 to draw M shape
-    requestAnimationFrame(() => {
-      mMorphPath.style.transition = 'stroke-dashoffset 1s ease';
-      mMorphPath.style.strokeDashoffset = '0';
-    });
+    bigLoader.style.transform = `translate(${dx}px, ${dy}px) scale(0.3)`;
+    await new Promise(r => setTimeout(r, 1300));
 
-    // After movement + morph is done, fade out big loader
-    setTimeout(() => {
-      bigLoader.style.transition += ', opacity 0.5s ease 0.5s';
-      bigLoader.style.opacity = '0';
-    }, 750);
-
-    // Wait for morph and fade out
-    await new Promise(r => setTimeout(r, 1800));
-
-    // Hide big loader
+    // Fade out big loader quickly
+    bigLoader.style.opacity = '0';
+    await new Promise(r => setTimeout(r, 150));
     bigLoader.style.display = 'none';
     bigLoader.style.pointerEvents = 'none';
 
     // Show top bar
     topBar.classList.add('visible');
     topBar.style.pointerEvents = 'auto';
-    topBar.style.opacity = '1';
-    spinnerVertical.style.display = 'block';
     pageNameInSearch.style.display = 'block';
 
-    // After short delay fade out M shape
-    setTimeout(() => {
-      mMorphSVG.style.opacity = '0';
-    }, 800);
+    // Show spinner below (mini line is permanently below the top bar)
+    spinnerVertical.style.display = 'block';
+    spinnerVertical.classList.add('visible');
   }
 
-  setTimeout(() => {
-    animateLoaderToLogoAndMorph();
-  }, 3000);
+  setTimeout(animateLoader, 3000);
 
-  // Mini line expand/collapse toggle
+  // Mini line expand/collapse toggle with menu control
   let expanded = false;
   function toggleExpand() {
     expanded = !expanded;
     if (expanded) {
-      miniLine.classList.add('expanded');
+      miniLineContainer.classList.add('expanded');
+      menuContainer.classList.add('visible');
       miniLineContainer.setAttribute('aria-pressed', 'true');
     } else {
-      miniLine.classList.remove('expanded');
+      miniLineContainer.classList.remove('expanded');
+      menuContainer.classList.remove('visible');
       miniLineContainer.setAttribute('aria-pressed', 'false');
     }
   }
@@ -349,7 +384,7 @@
     }
   });
 
-  // Pull down animation
+  // Pull down animation for top bar content and mini line (with menu reveal)
   let startY = null;
   let pulling = false;
   const maxPull = 100;
@@ -359,7 +394,6 @@
     const c3 = c1 + 1;
     return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
   }
-
   function onTouchStart(evt) {
     if (evt.touches && evt.touches.length === 1) {
       startY = evt.touches[0].clientY;
@@ -377,22 +411,43 @@
     let eased = easeOutBack(deltaY / maxPull) * maxPull;
     topBarContent.style.transform = `translateY(${eased}px)`;
     miniLine.style.transform = `scaleX(${1 + eased / maxPull * 3})`;
+
+    // Reveal menu with drag beyond small threshold
+    if(eased > 10) {
+      menuContainer.classList.add('visible');
+      miniLineContainer.classList.add('expanded');
+      expanded = true;
+      miniLineContainer.setAttribute('aria-pressed', 'true');
+    } else if (!pulling) {
+      menuContainer.classList.remove('visible');
+      miniLineContainer.classList.remove('expanded');
+      expanded = false;
+      miniLineContainer.setAttribute('aria-pressed', 'false');
+    }
   }
   function onTouchEnd() {
     if (!pulling) return;
     pulling = false;
     miniLine.classList.remove('pull-active');
-    topBarContent.style.transition = 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
-    miniLine.style.transition = 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+    topBarContent.style.transition = 'transform 0.4s cubic-bezier(0.4,0,0.2,1)';
+    miniLine.style.transition = 'transform 0.4s cubic-bezier(0.4,0,0.2,1)';
     topBarContent.style.transform = 'translateY(0)';
     miniLine.style.transform = 'scaleX(1)';
+
+    // If not expanded by click, hide menu on release if pull distance small
+    if(!expanded) {
+      menuContainer.classList.remove('visible');
+      miniLineContainer.classList.remove('expanded');
+      miniLineContainer.setAttribute('aria-pressed', 'false');
+    }
+
     setTimeout(() => {
       miniLine.style.transition = '';
       topBarContent.style.transition = '';
     }, 400);
   }
 
-  // Mouse support for pull-down
+  // Mouse support for pull-down with same logic
   let mouseDown = false;
   function onMouseDown(evt) {
     startY = evt.clientY;
@@ -410,16 +465,34 @@
     let eased = easeOutBack(deltaY / maxPull) * maxPull;
     topBarContent.style.transform = `translateY(${eased}px)`;
     miniLine.style.transform = `scaleX(${1 + eased / maxPull * 3})`;
+
+    if(eased > 10) {
+      menuContainer.classList.add('visible');
+      miniLineContainer.classList.add('expanded');
+      expanded = true;
+      miniLineContainer.setAttribute('aria-pressed', 'true');
+    } else if (!pulling) {
+      menuContainer.classList.remove('visible');
+      miniLineContainer.classList.remove('expanded');
+      expanded = false;
+      miniLineContainer.setAttribute('aria-pressed', 'false');
+    }
   }
   function onMouseUp() {
     if (!mouseDown) return;
     mouseDown = false;
     pulling = false;
     miniLine.classList.remove('pull-active');
-    topBarContent.style.transition = 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
-    miniLine.style.transition = 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+    topBarContent.style.transition = 'transform 0.4s cubic-bezier(0.4,0,0.2,1)';
+    miniLine.style.transition = 'transform 0.4s cubic-bezier(0.4,0,0.2,1)';
     topBarContent.style.transform = 'translateY(0)';
     miniLine.style.transform = 'scaleX(1)';
+
+    if(!expanded) {
+      menuContainer.classList.remove('visible');
+      miniLineContainer.classList.remove('expanded');
+      miniLineContainer.setAttribute('aria-pressed', 'false');
+    }
     setTimeout(() => {
       miniLine.style.transition = '';
       topBarContent.style.transition = '';
@@ -431,7 +504,6 @@
   topBarEl.addEventListener('touchmove', onTouchMove, {passive: true});
   topBarEl.addEventListener('touchend', onTouchEnd);
   topBarEl.addEventListener('touchcancel', onTouchEnd);
-
   topBarEl.addEventListener('mousedown', onMouseDown);
   window.addEventListener('mousemove', onMouseMove);
   window.addEventListener('mouseup', onMouseUp);
