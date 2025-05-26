@@ -39,16 +39,12 @@
     z-index: 10000;
     will-change: transform, opacity;
     pointer-events: auto;
-    transition: transform 1.2s ease, opacity 0.6s ease 1.2s;
-    overflow: visible;
   }
   /* Big circular spinner */
   .big-spinner {
     width: 80px;
     height: 80px;
     animation: spin 1.5s linear infinite;
-    stroke-dasharray: 150;
-    stroke-dashoffset: 50;
     transform-origin: 50% 50%;
   }
   .big-spinner circle {
@@ -56,25 +52,12 @@
     stroke-width: 6;
     fill: none;
     stroke-linecap: round;
-    animation: spin 1.5s linear infinite;
+    stroke-dasharray: 150;
+    stroke-dashoffset: 50;
   }
   @keyframes spin {
     0% {transform: rotate(0deg);}
     100% {transform: rotate(360deg);}
-  }
-  /* M path shape container for morph animation */
-  #mShape {
-    position: fixed;
-    top: 0;
-    left: 0;
-    pointer-events: none;
-    fill: none;
-    stroke: white;
-    stroke-width: 2.5;
-    stroke-linejoin: round;
-    stroke-linecap: round;
-    opacity: 0;
-    z-index: 11000;
   }
   /* Mini horizontal line container fixed on top */
   .mini-line-container {
@@ -153,7 +136,6 @@
     background: transparent;
     flex-shrink: 0;
     position: relative;
-    overflow: visible;
   }
   .ms-logo svg {
     width: 28px;
@@ -212,6 +194,25 @@
     50% { opacity: 0.3; }
     100% { transform: rotate(360deg); opacity: 1; }
   }
+  /* Path morph animations for smooth M shape */
+  #mMorphPath {
+    stroke: white;
+    stroke-width: 2.5;
+    fill: none;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    position: fixed;
+    top: 8px; 
+    left: 16px;
+    width: 40px;
+    height: 36px;
+    pointer-events: none;
+    z-index: 11000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    stroke-dasharray: 120;
+    stroke-dashoffset: 120;
+  }
 </style>
 </head>
 <body>
@@ -222,9 +223,9 @@
   </svg>
 </div>
 
-<!-- SVG path for M Shape morph animation -->
-<svg id="mShape" width="48" height="40" viewBox="0 0 24 24" style="position: fixed; top: 8px; left: 16px; pointer-events: none; transform-origin: left top;">
-  <polyline id="mPath" points="3,19 3,5 9.5,14 13.5,5 20,19" stroke="white" stroke-width="2.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+<!-- SVG path for morphing M shape -->
+<svg id="mMorphSVG" width="40" height="36" style="position: fixed; top: 8px; left: 16px; overflow: visible; pointer-events: none; z-index: 11000; opacity: 0;">
+  <path id="mMorphPath" d="M3 30 L3 5 L10 18 L17 5 L23 30" />
 </svg>
 
 <!-- Mini horizontal line container fixed on top -->
@@ -252,16 +253,16 @@
 
 <script>
   const bigLoader = document.getElementById('bigLoaderOverlay');
-  const bigSpinner = document.getElementById('bigSpinner');
+  const bigSpinnerCircle = document.querySelector('#bigSpinner circle');
   const topBar = document.getElementById('topBar');
   const pageNameInSearch = document.getElementById('pageNameInSearch');
   const spinnerVertical = document.getElementById('spinnerVertical');
   const miniLine = document.getElementById('miniLine');
   const miniLineContainer = document.getElementById('miniLineContainer');
   const topBarContent = document.getElementById('topBarContent');
-  const mShape = document.getElementById('mShape');
+  const mMorphSVG = document.getElementById('mMorphSVG');
+  const mMorphPath = document.getElementById('mMorphPath');
 
-  // Calculate translation from center of screen to logo position
   function getTranslateToLogo() {
     const logoBox = document.querySelector('.ms-logo-box');
     const logoRect = logoBox.getBoundingClientRect();
@@ -272,64 +273,60 @@
     return {dx, dy};
   }
 
-  async function animateBigLoaderToLogoAndMorph() {
+  async function animateLoaderToLogoAndMorph() {
     const {dx, dy} = getTranslateToLogo();
 
-    // Stop big spinner rotation to keep stable before morph.
-    bigSpinner.style.animationPlayState = 'paused';
+    // Stop big spinner rotation before morph
+    bigSpinnerCircle.style.transition = 'stroke-dashoffset 0.7s ease';
+    bigSpinnerCircle.style.strokeDashoffset = '0';  // Close circle
 
-    // Animate big loader circle stroke dashoffset shrink to simulate folding
-    bigSpinner.querySelector('circle').style.transition = 'stroke-dashoffset 0.8s ease-out';
-    bigSpinner.querySelector('circle').style.strokeDashoffset = '0';
+    await new Promise(r => setTimeout(r, 700));
 
-    // Wait for dash shrink animation
-    await new Promise(r => setTimeout(r, 800));
-
-    // Animate move and scaling toward logo position
+    // Move and scale big loader towards logo
     bigLoader.style.transition = 'transform 1s ease';
     bigLoader.style.transformOrigin = 'center center';
-    bigLoader.style.transform = `translate(${dx}px, ${dy}px) scale(0.4)`;
+    bigLoader.style.transform = `translate(${dx}px, ${dy}px) scale(0.25)`;
+    
+    // Show M morph path, fade in and animate stroke dashoffset
+    mMorphSVG.style.opacity = '1';
+    mMorphPath.style.transition = 'none';
+    mMorphPath.style.strokeDasharray = '120';
+    mMorphPath.style.strokeDashoffset = '120';
+    
+    // Animate dashoffset to 0 to draw M shape
+    requestAnimationFrame(() => {
+      mMorphPath.style.transition = 'stroke-dashoffset 1s ease';
+      mMorphPath.style.strokeDashoffset = '0';
+    });
 
-    // Show and prepare M shape path at logo position, start invisible
-    mShape.style.opacity = '0';
-    mShape.style.transition = 'opacity 0.8s ease 0.8s';
-    mShape.style.transform = 'scale(0.4) translate(0,0)';
-    mShape.style.display = 'block';
-
-    // After small delay, fade the M shape in
+    // After movement + morph is done, fade out big loader
     setTimeout(() => {
-      mShape.style.opacity = '1';
-    }, 800);
+      bigLoader.style.transition += ', opacity 0.5s ease 0.5s';
+      bigLoader.style.opacity = '0';
+    }, 750);
 
-    // Fade out the big loader overlay after morph
-    bigLoader.style.transition += ', opacity 0.8s ease 0.8s';
-    bigLoader.style.opacity = '0';
+    // Wait for morph and fade out
+    await new Promise(r => setTimeout(r, 1800));
 
-    // Wait total animation duration before showing top bar
-    await new Promise(r => setTimeout(r, 1600));
-
+    // Hide big loader
     bigLoader.style.display = 'none';
     bigLoader.style.pointerEvents = 'none';
 
-    // Hide big spinner dashoffset transition so it resets on reload
-    bigSpinner.querySelector('circle').style.transition = '';
-
-    // Show top bar with spinner and page name
+    // Show top bar
     topBar.classList.add('visible');
     topBar.style.pointerEvents = 'auto';
     topBar.style.opacity = '1';
     spinnerVertical.style.display = 'block';
     pageNameInSearch.style.display = 'block';
 
-    // Hide M shape after morph transition complete
+    // After short delay fade out M shape
     setTimeout(() => {
-      mShape.style.opacity = '0';
-      setTimeout(() => { mShape.style.display = 'none'; }, 600);
-    }, 1200);
+      mMorphSVG.style.opacity = '0';
+    }, 800);
   }
 
   setTimeout(() => {
-    animateBigLoaderToLogoAndMorph();
+    animateLoaderToLogoAndMorph();
   }, 3000);
 
   // Mini line expand/collapse toggle
