@@ -214,6 +214,74 @@
     100% { transform: rotate(360deg); opacity: 1; }
   }
 
+
+.btn-group {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+}
+
+.preview-btn,
+.download-btn {
+  background-color: #444;
+  border: none;
+  padding: 8px 16px;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.preview-btn:hover,
+.download-btn:hover {
+  background-color: #666;
+}
+
+/* Modal Styles */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0; top: 0;
+  width: 100%; height: 100%;
+  background-color: rgba(0,0,0,0.8);
+}
+
+.modal-content {
+  background-color: #111;
+  margin: 10% auto;
+  padding: 20px;
+  border: 2px solid #333;
+  width: 90%;
+  max-width: 600px;
+  color: white;
+  border-radius: 10px;
+  position: relative;
+}
+
+.close {
+  color: #aaa;
+  position: absolute;
+  right: 20px;
+  top: 15px;
+  font-size: 28px;
+  cursor: pointer;
+}
+
+/* Download animation */
+.downloading::after {
+  content: ' Downloading...';
+  color: neongreen;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0% { opacity: 1; }
+  50% { opacity: 0.4; }
+  100% { opacity: 1; }
+}
+
+  
 #mainContent {
   margin-top: 5px;
   padding: 20px;
@@ -334,19 +402,36 @@
 <main id="mainContent">
   <ul class="content-list">
     <li>
-      <h3>Title One</h3>
-      <p>Description for content one.</p>
+      <h3>Genetics Notes</h3>
+      <p>Chapter 1: Introduction to Genetics</p>
+      <div class="btn-group">
+        <button 
+          class="preview-btn" 
+          onclick="openModal(this)" 
+          data-type="pdf" 
+          data-src="https://example.com/genetics.pdf"
+        >
+          Preview
+        </button>
+        <button 
+          class="download-btn" 
+          onclick="startDownload(this, 'https://example.com/genetics.pdf')"
+        >
+          Download
+        </button>
+      </div>
     </li>
-    <li>
-      <h3>Title Two</h3>
-      <p>Description for content two.</p>
-    </li>
-    <li>
-      <h3>Title Three</h3>
-      <p>Description for content three.</p>
-    </li>
+    <!-- More list items here -->
   </ul>
 </main>
+
+<!-- Modal Preview -->
+<div id="previewModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeModal()">&times;</span>
+    <div id="modalBody" style="height: 80vh;"></div>
+  </div>
+</div>
   
   <!-- Menu container -->
   <div id="menuContainer" aria-label="Main menu">
@@ -440,6 +525,52 @@
       toggleExpand();
     }
   });
+//this is extra inhave added my shelf
+function openModal(button) {
+  const type = button.getAttribute("data-type");
+  const src = button.getAttribute("data-src");
+
+  const modalBody = document.getElementById("modalBody");
+
+  if (type === "pdf") {
+    modalBody.innerHTML = `
+      <iframe src="https://docs.google.com/gview?url=${src}&embedded=true" 
+              style="width:100%; height:100%; border:none;">
+      </iframe>`;
+  } else if (type === "image") {
+    modalBody.innerHTML = `<img src="${src}" style="max-width:100%; max-height:100%;" />`;
+  } else {
+    modalBody.innerHTML = `<p>Unsupported preview type.</p>`;
+  }
+
+  document.getElementById("previewModal").style.display = "block";
+}
+
+function closeModal() {
+  document.getElementById("previewModal").style.display = "none";
+  document.getElementById("modalBody").innerHTML = '';
+}
+
+function startDownload(button, fileUrl) {
+  button.classList.add("downloading");
+  button.disabled = true;
+
+  setTimeout(() => {
+    button.classList.remove("downloading");
+    button.disabled = false;
+
+    const link = document.createElement('a');
+    link.href = fileUrl;
+    link.download = fileUrl.split('/').pop();
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, 2000);
+}
+
+
+
+  
 
   // Pull down animation for top bar content and mini line (with menu reveal)
   let startY = null;
